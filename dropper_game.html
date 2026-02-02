@@ -1,48 +1,330 @@
-<style>
-#topGlobalUI {
-    max-width: 520px;
-    margin: 10px auto 25px auto;
-    padding: 15px 20px;
-    background: linear-gradient(135deg, rgba(0,0,0,0.6), rgba(20,20,40,0.8));
-    border: 3px solid #ff00ff;
-    border-radius: 20px;
-    box-shadow: 0 0 25px rgba(255,0,255,0.5);
-    text-align: center;
-}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INF+ Dropper Incremental</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-#topGlobalUI h2 {
-    color: #ff00ff;
-    margin-bottom: 15px;
-    text-shadow: 0 0 12px #ff00ff;
-}
+        body {
+            font-family: 'Arial Black', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            overflow-x: hidden;
+        }
 
-.top-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 10px 16px;
-    margin-bottom: 8px;
-    border-radius: 14px;
-    font-weight: bold;
-    font-size: 1.1em;
-}
+        .header {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 3px solid #00d4ff;
+        }
 
-.top-1 {
-    background: linear-gradient(90deg, #ffd700, #ffae00);
-    color: #000;
-}
+        .header h1 {
+            font-size: 3em;
+            text-shadow: 0 0 20px #00d4ff, 0 0 40px #00d4ff;
+            background: linear-gradient(45deg, #ff00ff, #00d4ff, #ffff00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: rainbow 3s linear infinite;
+        }
 
-.top-2 {
-    background: linear-gradient(90deg, #c0c0c0, #9e9e9e);
-    color: #000;
-}
+        @keyframes rainbow { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
 
-.top-3 {
-    background: linear-gradient(90deg, #cd7f32, #a45a1a);
-    color: #000;
-}
-</style>
+        /* MONEY DISPLAY */
+        .money-display {
+            font-size: 2.5em;
+            margin: 20px;
+            text-align: center;
+            text-shadow: 0 0 10px #00ff00;
+        }
 
-<div id="topGlobalUI">
-    <h2>🏆 TOP GLOBAL</h2>
+        .money-per-second {
+            font-size: 1.2em;
+            color: #00ff00;
+            margin-top: 10px;
+        }
 
-    <div class="
+        /* CONTAINER */
+        .container {
+            display: flex;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            gap: 20px;
+        }
+
+        .click-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .dropper-container { position: relative; margin: 40px 0; }
+
+        .dropper {
+            width: 200px;
+            height: 200px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: transform 0.1s;
+            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4em;
+            border: 4px solid white;
+        }
+
+        .dropper:hover { transform: scale(1.05); }
+        .dropper:active { transform: scale(0.95); }
+
+        .click-effect {
+            position: absolute;
+            font-size: 2em;
+            font-weight: bold;
+            color: #00ff00;
+            pointer-events: none;
+            animation: floatUp 1s ease-out forwards;
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-100px); }
+        }
+
+        /* SHOP */
+        .shop {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            padding: 20px;
+            border: 2px solid #00d4ff;
+            max-height: 800px;
+            overflow-y: auto;
+        }
+
+        .shop h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2em;
+            color: #00d4ff;
+        }
+
+        .shop-item {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+            border: 3px solid;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .shop-item.tier1 { border-color: #888; background: linear-gradient(135deg, rgba(136,136,136,0.2), rgba(100,100,100,0.2)); }
+        .shop-item.tier2 { border-color: #00d4ff; background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(0,100,200,0.2)); }
+        .shop-item.tier3 { border-color: #ff00ff; background: linear-gradient(135deg, rgba(255,0,255,0.2), rgba(255,100,0,0.2)); }
+
+        .shop-item:hover { transform: translateX(10px); box-shadow: 0 0 30px rgba(0,212,255,0.5); }
+        .shop-item.locked { opacity: 0.5; cursor: not-allowed; }
+        .shop-item.locked:hover { transform: none; }
+
+        .item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .item-name { font-size: 1.3em; font-weight: bold; }
+        .item-icon { font-size: 2em; }
+        .item-description { font-size: 0.9em; color: #ccc; margin-bottom: 10px; }
+        .item-stats { display: flex; justify-content: space-between; align-items: center; }
+        .item-price { font-size: 1.5em; color: #00ff00; font-weight: bold; }
+        .item-count { background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 20px; font-size: 1.1em; }
+
+        /* STATS PANEL */
+        .stats-panel {
+            background: rgba(0,0,0,0.3);
+            border: 2px solid #00d4ff;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .stats-panel h3 { color: #00d4ff; margin-bottom: 15px; }
+        .stat-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
+
+        /* FLOATING MONEY & PARTICLES */
+        .floating-money { position: fixed; font-size: 1.5em; font-weight: bold; color: #ffff00; pointer-events: none; animation: floatUpSlow 2s ease-out forwards; text-shadow: 0 0 10px #ffff00; }
+        @keyframes floatUpSlow { 0% {opacity:1; transform:translateY(0) scale(1);} 50% {transform:translateY(-50px) scale(1.2);} 100% {opacity:0; transform:translateY(-100px) scale(0.8);} }
+
+        .particle { position: fixed; width:10px; height:10px; border-radius:50%; pointer-events:none; animation: particleFloat 1s ease-out forwards; }
+        @keyframes particleFloat { 0% {opacity:1; transform:translate(0,0) scale(1);} 100% {opacity:0; transform:translate(var(--tx),var(--ty)) scale(0);} }
+
+        .upgrade-flash { animation: flash 0.5s; }
+        @keyframes flash { 0%,100%{background-color:transparent;} 50%{background-color: rgba(0,255,0,0.3);} }
+
+        @media (max-width:968px){.container{flex-direction:column;}}
+
+        /* TOP GLOBAL */
+        #topGlobalUI {
+            max-width: 500px;
+            margin: 20px auto;
+            padding: 15px 20px;
+            background: linear-gradient(135deg, rgba(0,0,0,0.6), rgba(20,20,40,0.8));
+            border: 3px solid #00d4ff;
+            border-radius: 20px;
+            box-shadow: 0 0 25px rgba(0,212,255,0.4);
+            text-align: center;
+        }
+
+        #topGlobalUI h2 {
+            color: #00d4ff;
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px #00d4ff;
+        }
+
+        .top-row { display:flex; justify-content:space-between; padding:10px 15px; margin-bottom:8px; border-radius:12px; font-weight:bold; font-size:1.1em; }
+        .top-1 { background: linear-gradient(90deg,#ffd700,#ffae00); color:black; }
+        .top-2 { background: linear-gradient(90deg,#c0c0c0,#9e9e9e); color:black; }
+        .top-3 { background: linear-gradient(90deg,#cd7f32,#a45a1a); color:black; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>💎 INF+ DROPPER 💎</h1>
+        <p>Merchant Dropper Incremental</p>
+    </div>
+
+    <!-- TOP GLOBAL -->
+    <div id="topGlobalUI">
+        <h2>🏆 TOP GLOBAL</h2>
+        <div class="top-row top-1"><span>#1 Low lolrs</span><span>👑</span></div>
+        <div class="top-row top-2"><span>#2 Ignacio</span><span>🥈</span></div>
+        <div class="top-row top-3"><span>#3 Benicio</span><span>🥉</span></div>
+    </div>
+
+    <div class="money-display">
+        💰 <span id="money">0</span>T$
+        <div class="money-per-second">⚡ <span id="moneyPerSecond">0</span>T$/seg</div>
+    </div>
+
+    <div class="container">
+        <div class="click-area">
+            <div class="dropper-container" id="dropperContainer">
+                <div class="dropper" id="mainDropper">🏪</div>
+            </div>
+            <div class="stats-panel">
+                <h3>📊 Estadísticas</h3>
+                <div class="stat-row"><span>Clicks totales:</span><span id="totalClicks">0</span></div>
+                <div class="stat-row"><span>Dinero por click:</span><span id="moneyPerClick">1T$</span></div>
+                <div class="stat-row"><span>Droppers activos:</span><span id="totalDroppers">0</span></div>
+                <div class="stat-row"><span>Multiplicador:</span><span id="multiplier">x1</span></div>
+            </div>
+        </div>
+
+        <div class="shop">
+            <h2>🛒 TIENDA</h2>
+            <div class="shop-item tier1" data-item="basic">
+                <div class="item-header"><span class="item-name">Dropper Básico</span><span class="item-icon">🏪</span></div>
+                <div class="item-description">Genera 1T$ cada segundo automáticamente</div>
+                <div class="item-stats"><div class="item-price">💰 <span class="price">10</span>T$</div><div class="item-count">Cantidad: <span class="count">0</span></div></div>
+            </div>
+            <div class="shop-item tier2" data-item="advanced">
+                <div class="item-header"><span class="item-name">Dropper Avanzado</span><span class="item-icon">🎰</span></div>
+                <div class="item-description">Genera 50T$ cada segundo automáticamente</div>
+                <div class="item-stats"><div class="item-price">💰 <span class="price">500</span>T$</div><div class="item-count">Cantidad: <span class="count">0</span></div></div>
+            </div>
+            <div class="shop-item tier3" data-item="infinity">
+                <div class="item-header"><span class="item-name">Dropper INF+</span><span class="item-icon">🌈</span></div>
+                <div class="item-description">Genera 1000T$ cada segundo automáticamente</div>
+                <div class="item-stats"><div class="item-price">💰 <span class="price">15000</span>T$</div><div class="item-count">Cantidad: <span class="count">0</span></div></div>
+            </div>
+            <div class="shop-item tier1" data-item="clickUpgrade">
+                <div class="item-header"><span class="item-name">Mejora de Click</span><span class="item-icon">👆</span></div>
+                <div class="item-description">Aumenta el dinero por click en 1T$</div>
+                <div class="item-stats"><div class="item-price">💰 <span class="price">50</span>T$</div><div class="item-count">Nivel: <span class="count">1</span></div></div>
+            </div>
+            <div class="shop-item tier2" data-item="multiplier">
+                <div class="item-header"><span class="item-name">Multiplicador x2</span><span class="item-icon">✨</span></div>
+                <div class="item-description">Duplica todas las ganancias</div>
+                <div class="item-stats"><div class="item-price">💰 <span class="price">5000</span>T$</div><div class="item-count">Nivel: <span class="count">1</span></div></div>
+            </div>
+            <div class="shop-item tier3" data-item="superMultiplier">
+                <div class="item-header"><span class="item-name">Super Multiplicador x10</span><span class="item-icon">💫</span></div>
+                <div class="item-description">Multiplica todas las ganancias por 10</div>
+                <div class="item-stats"><div class="item-price">💰 <span class="price">100000</span>T$</div><div class="item-count">Nivel: <span class="count">1</span></div></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ================= GAME STATE =================
+        let gameState = {
+            money:0, totalClicks:0, clickPower:1, multiplier:1,
+            items:{
+                basic:{count:0,cost:10,production:1,costMultiplier:1.15},
+                advanced:{count:0,cost:500,production:50,costMultiplier:1.15},
+                infinity:{count:0,cost:15000,production:1000,costMultiplier:1.15},
+                clickUpgrade:{level:1,cost:50,costMultiplier:1.5},
+                multiplier:{level:1,cost:5000,costMultiplier:2},
+                superMultiplier:{level:1,cost:100000,costMultiplier:3}
+            }
+        };
+
+        // ================= DOM ELEMENTS =================
+        const moneyDisplay=document.getElementById('money');
+        const moneyPerSecondDisplay=document.getElementById('moneyPerSecond');
+        const totalClicksDisplay=document.getElementById('totalClicks');
+        const moneyPerClickDisplay=document.getElementById('moneyPerClick');
+        const totalDroppersDisplay=document.getElementById('totalDroppers');
+        const multiplierDisplay=document.getElementById('multiplier');
+        const mainDropper=document.getElementById('mainDropper');
+
+        // ================= FORMAT NUMBERS =================
+        function formatNumber(num){
+            if(num>=1e9) return (num/1e9).toFixed(1)+'B';
+            if(num>=1e6) return (num/1e6).toFixed(1)+'M';
+            if(num>=1e3) return (num/1e3).toFixed(1)+'K';
+            return Math.floor(num);
+        }
+
+        // ================= UPDATE DISPLAY =================
+        function updateDisplay(){
+            moneyDisplay.textContent=formatNumber(gameState.money);
+            moneyPerSecondDisplay.textContent=formatNumber(calculateMoneyPerSecond());
+            totalClicksDisplay.textContent=formatNumber(gameState.totalClicks);
+            moneyPerClickDisplay.textContent=formatNumber(gameState.clickPower*gameState.multiplier)+'T$';
+            totalDroppersDisplay.textContent=gameState.items.basic.count+gameState.items.advanced.count+gameState.items.infinity.count;
+            multiplierDisplay.textContent='x'+gameState.multiplier;
+
+            document.querySelectorAll('.shop-item').forEach(item=>{
+                const type=item.dataset.item;
+                const data=gameState.items[type];
+                const priceEl=item.querySelector('.price');
+                const countEl=item.querySelector('.count');
+                if(data){
+                    priceEl.textContent=formatNumber(data.cost);
+                    if(type.includes('Upgrade')||type.includes('ultiplier')) countEl.textContent=data.level;
+                    else countEl.textContent=data.count;
+                    if(gameState.money>=data.cost) item.classList.remove('locked');
+                    else item.classList.add('locked');
+                }
+            });
+        }
+
+        // ================= CALCULATE MONEY PER SECOND =================
+        function calculateMoneyPerSecond(){
+            let total=0;
+            total+=gameState.items.basic.count*gameState.items.basic.production;
+            total+=gameState.items.advanced.count*gameState.items.advanced.production;
+            total+=gameState.items.infinity.count*gameState.items.infinity.production;
+            return total*gameState.multiplier;
+        }
+
+        // ================= CLICK EFFECT =================
+        function createClickEffect(x,y,amount){
+            const effect=document.createElement('div');
+            effect.className='click
