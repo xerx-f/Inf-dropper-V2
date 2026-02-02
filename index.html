@@ -215,6 +215,7 @@
         <div class="click-area">
             <div class="dropper-container" id="dropperContainer">
                 <div class="dropper" id="mainDropper">🏪</div>
+                <div class="dropper" id="mainDropper" role="button" tabindex="0" aria-label="Generar dinero">🏪</div>
             </div>
             <div class="stats-panel">
                 <h3>📊 Estadísticas</h3>
@@ -271,6 +272,17 @@
                 clickUpgrade:{level:1,cost:50,costMultiplier:1.5},
                 multiplier:{level:1,cost:5000,costMultiplier:2},
                 superMultiplier:{level:1,cost:100000,costMultiplier:3}
+            money: 0,
+            totalClicks: 0,
+            clickPower: 1,
+            multiplier: 1,
+            items: {
+                basic: { count: 0, cost: 10, production: 1, costMultiplier: 1.15 },
+                advanced: { count: 0, cost: 500, production: 50, costMultiplier: 1.15 },
+                infinity: { count: 0, cost: 15000, production: 1000, costMultiplier: 1.15 },
+                clickUpgrade: { level: 1, cost: 50, costMultiplier: 1.5 },
+                multiplier: { level: 1, cost: 5000, costMultiplier: 2 },
+                superMultiplier: { level: 1, cost: 100000, costMultiplier: 3 }
             }
         };
 
@@ -282,12 +294,24 @@
         const totalDroppersDisplay=document.getElementById('totalDroppers');
         const multiplierDisplay=document.getElementById('multiplier');
         const mainDropper=document.getElementById('mainDropper');
+        const moneyDisplay = document.getElementById('money');
+        const moneyPerSecondDisplay = document.getElementById('moneyPerSecond');
+        const totalClicksDisplay = document.getElementById('totalClicks');
+        const moneyPerClickDisplay = document.getElementById('moneyPerClick');
+        const totalDroppersDisplay = document.getElementById('totalDroppers');
+        const multiplierDisplay = document.getElementById('multiplier');
+        const mainDropper = document.getElementById('mainDropper');
+        const dropperContainer = document.getElementById('dropperContainer');
 
         // ================= FORMAT NUMBERS =================
         function formatNumber(num){
             if(num>=1e9) return (num/1e9).toFixed(1)+'B';
             if(num>=1e6) return (num/1e6).toFixed(1)+'M';
             if(num>=1e3) return (num/1e3).toFixed(1)+'K';
+        function formatNumber(num) {
+            if (num >= 1e9) return (num / 1e9).toFixed(1) + 'B';
+            if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M';
+            if (num >= 1e3) return (num / 1e3).toFixed(1) + 'K';
             return Math.floor(num);
         }
 
@@ -311,7 +335,34 @@
                     else countEl.textContent=data.count;
                     if(gameState.money>=data.cost) item.classList.remove('locked');
                     else item.classList.add('locked');
+        function updateDisplay() {
+            moneyDisplay.textContent = formatNumber(gameState.money);
+            moneyPerSecondDisplay.textContent = formatNumber(calculateMoneyPerSecond());
+            totalClicksDisplay.textContent = formatNumber(gameState.totalClicks);
+            moneyPerClickDisplay.textContent =
+                formatNumber(gameState.clickPower * gameState.multiplier) + 'T$';
+            totalDroppersDisplay.textContent =
+                gameState.items.basic.count +
+                gameState.items.advanced.count +
+                gameState.items.infinity.count;
+            multiplierDisplay.textContent = 'x' + gameState.multiplier;
+
+            document.querySelectorAll('.shop-item').forEach((item) => {
+                const type = item.dataset.item;
+                const data = gameState.items[type];
+                const priceEl = item.querySelector('.price');
+                const countEl = item.querySelector('.count');
+
+                if (!data) return;
+                priceEl.textContent = formatNumber(data.cost);
+                if (type.includes('Upgrade') || type.includes('ultiplier')) {
+                    countEl.textContent = data.level;
+                } else {
+                    countEl.textContent = data.count;
                 }
+
+                if (gameState.money >= data.cost) item.classList.remove('locked');
+                else item.classList.add('locked');
             });
         }
 
@@ -322,9 +373,133 @@
             total+=gameState.items.advanced.count*gameState.items.advanced.production;
             total+=gameState.items.infinity.count*gameState.items.infinity.production;
             return total*gameState.multiplier;
+        function calculateMoneyPerSecond() {
+            let total = 0;
+            total += gameState.items.basic.count * gameState.items.basic.production;
+            total += gameState.items.advanced.count * gameState.items.advanced.production;
+            total += gameState.items.infinity.count * gameState.items.infinity.production;
+            return total * gameState.multiplier;
         }
 
         // ================= CLICK EFFECT =================
         function createClickEffect(x,y,amount){
             const effect=document.createElement('div');
             effect.className='click
+        function createClickEffect(x, y, amount) {
+            const effect = document.createElement('div');
+            effect.className = 'click-effect';
+            effect.style.left = `${x}px`;
+            effect.style.top = `${y}px`;
+            effect.textContent = `+${formatNumber(amount)}T$`;
+            dropperContainer.appendChild(effect);
+            effect.addEventListener('animationend', () => effect.remove());
+        }
+
+        function createFloatingMoney(x, y, amount) {
+            const floaty = document.createElement('div');
+            floaty.className = 'floating-money';
+            floaty.style.left = `${x}px`;
+            floaty.style.top = `${y}px`;
+            floaty.textContent = `+${formatNumber(amount)}T$`;
+            document.body.appendChild(floaty);
+            floaty.addEventListener('animationend', () => floaty.remove());
+        }
+
+        function createParticles(x, y) {
+            for (let i = 0; i < 8; i += 1) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = `${x}px`;
+                particle.style.top = `${y}px`;
+                particle.style.background = `hsl(${Math.random() * 360}deg, 100%, 50%)`;
+                particle.style.setProperty('--tx', `${(Math.random() - 0.5) * 120}px`);
+                particle.style.setProperty('--ty', `${(Math.random() - 0.5) * 120}px`);
+                document.body.appendChild(particle);
+                particle.addEventListener('animationend', () => particle.remove());
+            }
+        }
+
+        // ================= ECONOMY =================
+        function addMoney(amount) {
+            if (amount <= 0) return;
+            gameState.money += amount;
+            updateDisplay();
+        }
+
+        // ================= MAIN CLICK =================
+        function handleDropperClick(event) {
+            const earned = gameState.clickPower * gameState.multiplier;
+            gameState.totalClicks += 1;
+            addMoney(earned);
+
+            const rect = dropperContainer.getBoundingClientRect();
+            const hasPointer = Number.isFinite(event.clientX) && Number.isFinite(event.clientY);
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const clientX = hasPointer ? event.clientX : centerX;
+            const clientY = hasPointer ? event.clientY : centerY;
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+            createClickEffect(x, y, earned);
+            createFloatingMoney(clientX, clientY, earned);
+            createParticles(clientX, clientY);
+        }
+
+        mainDropper.addEventListener('click', (event) => {
+            handleDropperClick(event);
+        });
+
+        mainDropper.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            handleDropperClick(event);
+        });
+
+        // ================= SHOP =================
+        function buyItem(type) {
+            const item = gameState.items[type];
+            if (!item || gameState.money < item.cost) return;
+
+            gameState.money -= item.cost;
+
+            if (type === 'clickUpgrade') {
+                item.level += 1;
+                gameState.clickPower += 1;
+                item.cost = Math.ceil(item.cost * item.costMultiplier);
+            } else if (type === 'multiplier') {
+                item.level += 1;
+                gameState.multiplier *= 2;
+                item.cost = Math.ceil(item.cost * item.costMultiplier);
+            } else if (type === 'superMultiplier') {
+                item.level += 1;
+                gameState.multiplier *= 10;
+                item.cost = Math.ceil(item.cost * item.costMultiplier);
+            } else {
+                item.count += 1;
+                item.cost = Math.ceil(item.cost * item.costMultiplier);
+            }
+
+            updateDisplay();
+        }
+
+        document.querySelectorAll('.shop-item').forEach((item) => {
+            item.addEventListener('click', () => {
+                if (item.classList.contains('locked')) return;
+                buyItem(item.dataset.item);
+                item.classList.add('upgrade-flash');
+                setTimeout(() => item.classList.remove('upgrade-flash'), 300);
+            });
+        });
+
+        // ================= GAME LOOP =================
+        setInterval(() => {
+            const perSecond = calculateMoneyPerSecond();
+            if (perSecond > 0) {
+                addMoney(perSecond);
+            }
+        }, 1000);
+
+        updateDisplay();
+    </script>
+</body>
+</html>
